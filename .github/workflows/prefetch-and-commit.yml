@@ -1,0 +1,40 @@
+name: Prefetch weather data and commit
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # daily at 01:00 UTC; adjust as needed
+  workflow_dispatch: {}
+
+jobs:
+  prefetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run prefetch script
+        run: python fetch_data.py
+
+      - name: Commit and push data.csv
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          if git status --porcelain | grep -q 'data.csv'; then
+            git add data.csv
+            git commit -m "Auto-update data.csv (prefetch) [skip ci]" || echo "no changes"
+            git push
+          else
+            echo "data.csv not changed"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
